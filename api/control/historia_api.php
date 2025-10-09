@@ -57,6 +57,7 @@ switch ($_POST['option']) {
                   "tipo_afiliacion" => $row['tipo'],
                   "eps" =>  $eps,
                   "afp" => $afp,
+                  "company" => $row['company'],
                   "arl" => $arl,
                   "riesgo" => $row['riesgo'],
                   "estado" => $row['state']
@@ -134,6 +135,7 @@ switch ($_POST['option']) {
                     "tipo_afiliacion" => $row['tipo'],
                     "eps" =>  $eps,
                     "afp" => $afp,
+                    "company" => $row['company'],
                     "arl" => $arl,
                     "riesgo" => $row['riesgo'],
                     "estado" => $row['state']
@@ -357,5 +359,92 @@ switch ($_POST['option']) {
 
   echo json_encode($rta);
   break;
+
+case 'delete_user':
+    // Parámetros
+    $id  = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $doc = isset($_POST['document']) ? trim($_POST['document']) : '';
+    $target_state = isset($_POST['target_state']) ? intval($_POST['target_state']) : 0; // 0=inactivo, 1=activo
+    if ($target_state !== 0 && $target_state !== 1) { $target_state = 0; }
+
+    // Buscar id por documento si no viene id
+    if ($id <= 0 && $doc !== '') {
+        if ($stmtFind = $mysqli->prepare("SELECT id FROM tbl_client WHERE document = ? LIMIT 1")) {
+            $stmtFind->bind_param('s', $doc);
+            $stmtFind->execute();
+            $resFind = $stmtFind->get_result();
+            if ($row = $resFind->fetch_assoc()) {
+                $id = intval($row['id']);
+            }
+            $stmtFind->close();
+        }
+    }
+
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'error' => 'ID_INVALIDO']);
+        break;
+    }
+
+    // Transacción
+    $mysqli->begin_transaction();
+    try {
+        // Intentar actualizar state
+        if ($stmt = $mysqli->prepare("UPDATE tbl_client SET state = ? WHERE id = ? LIMIT 1")) {
+            $stmt->bind_param('ii', $target_state, $id);
+            $stmt->execute();
+            $affected = $stmt->affected_rows; // 1 si cambió, 0 si ya estaba igual o no existía
+            $stmt->close();
+        } else {
+            throw new Exception('PREPARE_FAILED: ' . $mysqli->error);
+        }
+
+        if ($affected === 1) {
+            // Se cambió efectivamente
+            $mysqli->commit();
+            echo json_encode(['success' => true, 'id' => $id, 'new_state' => $target_state]);
+            break;
+        }
+
+        // affected_rows = 0: o no existía o ya estaba en ese estado.
+        // Verificamos existencia y estado actual.
+        if ($stmtChk = $mysqli->prepare("SELECT state FROM tbl_client WHERE id = ? LIMIT 1")) {
+            $stmtChk->bind_param('i', $id);
+            $stmtChk->execute();
+            $resChk = $stmtChk->get_result();
+            if ($row = $resChk->fetch_assoc()) {
+                $current = intval($row['state']);
+                $stmtChk->close();
+
+                if ($current === $target_state) {
+                    // Ya estaba en el estado deseado → tratar como éxito
+                    $mysqli->commit();
+                    echo json_encode([
+                        'success'    => true,
+                        'id'         => $id,
+                        'new_state'  => $target_state,
+                        'note'       => 'ALREADY_IN_TARGET_STATE'
+                    ]);
+                    break;
+                } else {
+                    // No cambió por alguna razón no esperada
+                    throw new Exception('NO_ROW_UPDATED_BUT_DIFFERENT_STATE');
+                }
+            } else {
+                $stmtChk->close();
+                throw new Exception('NOT_FOUND');
+            }
+        } else {
+            throw new Exception('PREPARE_CHECK_FAILED: ' . $mysqli->error);
+        }
+
+    } catch (Exception $e) {
+        $mysqli->rollback();
+        echo json_encode([
+            'success' => false,
+            'error'   => 'UPDATE_FAILED',
+            'message' => $e->getMessage()
+        ]);
+    }
+    break;
 
 }

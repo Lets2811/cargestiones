@@ -149,6 +149,13 @@ header('Location: index.html');//Aqui lo redireccionas al lugar que quieras.
                                 <span>Datos Clientes</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="usuarios.php" class="waves-effect">
+                                <i class="bx bx-user-pin"></i>
+                                <span>Usuarios</span>
+                            </a>
+                        </li>
                         
                         <li>
                               <a href="gastos.php" class="waves-effect">

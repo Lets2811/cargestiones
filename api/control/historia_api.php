@@ -150,7 +150,7 @@ switch ($_POST['option']) {
 
         case '4':
           // movimientos del mes
-          $sql = 'SELECT * FROM tbl_client WHERE tipo = "dependiente"';
+          $sql = 'SELECT * FROM tbl_client WHERE tipo = "dependiente" AND state = 1';
           $result = $mysqli->query($sql);
           $results_array = array();
           $rta = array();
@@ -219,7 +219,7 @@ switch ($_POST['option']) {
           case '5':
            // movimientos del mes
 
-          $sql = 'SELECT * FROM tbl_client WHERE tipo = "independiente"';
+          $sql = 'SELECT * FROM tbl_client WHERE tipo = "independiente" AND state = 1';
            $result = $mysqli->query($sql);
            $results_array = array();
            $rta = array();

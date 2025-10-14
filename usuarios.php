@@ -127,11 +127,6 @@ if (!isset($_SESSION['cliente'])) {
             </div> 
           </div>
 
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Right bar -->
   <div class="right-bar">
     <div data-simplebar class="h-100">
@@ -409,31 +404,186 @@ function searchInfoAll(){
 
 
     /* ===================== Ver retirados ===================== */
-    function cargarRetirados(){
-      const r1 = $.ajax({ type: "POST", url: 'api/control/historia_api.php', data: { option: 6, estado: 'retirado' }});
-      const r2 = $.ajax({ type: "POST", url: 'api/control/historia_api.php', data: { option: 6, estado: 'retirado', tipo: 'independiente' }});
-      $.when(r1, r2).done(function(a,b){
-        const arr1 = JSON.parse(a[0] || '[]');
-        const arr2 = JSON.parse(b[0] || '[]');
-        const rta = arr1.concat(arr2);
+var searchInfoMes = function () {
+  const month = parseInt($('#mesSelect').val(), 10);
+  if (!month) return;
 
-        const rows = rta.map(it => ([
-          it.name || '',
-          it.lastName || '',
-          it.afp || '',
-          it.arl || '',
-          it.eps || '',
-          pickCompany(it) || '—',
-          it.id || '',
-          it.document || '',
-          null
-        ]));
+  const meses = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  $('#mes').text(meses[month]);
 
-        renderTablaPrincipal(rows);
-        $('#historial-table-dependientes caption').text('USUARIOS (Retirados)');
-      });
+  const year = new Date().getFullYear();
+  const last = daysInMonth(year, month);
+
+  enableAndClampDayInputs(last);
+
+  // Render de tablas con el rango correcto
+  searchInfoMesDependientes();
+  searchInfoMesIndependientes();
+};
+
+ var searchInfoMesDependientes = function () {
+  const month = parseInt($('#mesSelect').val(), 10);
+  const year = new Date().getFullYear();
+  const { dStart, dEnd } = getDayRange(year, month);
+
+  $.ajax({
+    type: "POST",
+    url: 'api/control/historia_api.php',
+    data: {
+      "option": 4,
+      "mes": month,
+      "dStart": dStart,
+      "dEnd": dEnd
+    }
+  }).done(function (data) {
+
+            var rta = JSON.parse(data)
+            var html = '';
+            var dataSource = [];
+            for (var data of rta) {
+                var obj = [
+                    data['name'] + ' ' + data["lastName"],
+                    data['document'],
+                    data['tipo_afiliacion'],
+                    data['eps'],
+                    data['afp'],
+                    data['arl'],
+                    data['riesgo'],
+                    data['date'],
+                    data['type'] + ' ' + data['month'],
+                    data['estado'] == 1 ? 'Activo' : 'Retirado'
+                ]
+
+                dataSource.push(obj)
+            }
+
+            $('#historial-table-mes-dependiente').DataTable({
+                destroy: true,
+                data: dataSource,
+                columns: [{
+                        title: "Nombre "
+                    },
+                    {
+                        title: "Documento "
+                    },
+                    {
+                        title: "Tipo de afiliación "
+                    },
+                    {
+                        title: "EPS"
+                    },
+                    {
+                        title: "AFP"
+                    },
+                    {
+                        title: "ARL"
+                    },
+                    {
+                        title: "Riesgo"
+                    },
+                    {
+                        title: "Ultimo Movimiento"
+                    },
+                    {
+                        title: "Descripcion"
+                    },
+                    {
+                        title: "Estado"
+                    },
+                ],
+                dom: 'Bfrtip',
+
+                buttons: [
+                    'excel', 'pdf'
+                ]
+            });
+        })
     }
 
+    
+    var searchInfoMesIndependientes = function() {
+        const month = parseInt($('#mesSelect').val(), 10);
+        const year = new Date().getFullYear();
+        const { dStart, dEnd } = getDayRange(year, month);
+        $.ajax({
+            type: "POST",
+            url: 'api/control/historia_api.php',
+            data: {
+                "option": 5,
+                "mes": month,
+                "dStart": dStart,
+                "dEnd": dEnd
+            }
+        }).done(function(data) {
+
+            var rta = JSON.parse(data)
+            var html = '';
+            var dataSource = [];
+            //  var pos = 0;
+            for (var data of rta) {
+
+                
+                var obj = [
+                    data['name'] + ' ' + data["lastName"],
+                    data['document'],
+                    data['tipo_afiliacion'],
+                    data['eps'],
+                    data['afp'],
+                    data['arl'],
+                    data['riesgo'],
+                    data['date'],
+                    data['type'] + ' ' + data['month'],
+                    data['estado'] == 1 ? 'Activo' : 'Retirado'
+                ]
+
+                dataSource.push(obj)
+            }
+
+            var table = $('#historial-table-mes-independiente').DataTable({
+                destroy: true,
+                data: dataSource,
+               
+                columns: [{
+                        title: "Nombre "
+                    },
+                    {
+                        title: "Documento "
+                    },
+                    {
+                        title: "Tipo de afiliación "
+                    },
+                    {
+                        title: "EPS"
+                    },
+                    {
+                        title: "AFP"
+                    },
+                    {
+                        title: "ARL"
+                    },
+                    {
+                        title: "Riesgo"
+                    },
+                    {
+                        title: "Ultimo Movimiento"
+                    },
+                    {
+                        title: "Descripcion"
+                    },
+                    {
+                        title: "Estado"
+                    },
+                ],
+                dom: 'Bfrtip',
+
+                buttons: [
+                    'excel', 'pdf'
+                ]
+            });
+
+
+        })
+    }
 
     /* ===================== Toast helper ===================== */
     function showToast(title, body){
